@@ -1,0 +1,19 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+jedi = "*"
+pylint = "*"
+pytest = "*"
+
+[packages]
+python-daemon = "*"
+colorama = "*"
+wrapt = {editable = true, path = "."}
+# TODO: replace this with actual pybpf package when we add it PyPl
+pybpf = {editable = true, path = "/home/housedhorse/documents/projects/pybpf"}
+
+[requires]
+python_version = "3.8"
