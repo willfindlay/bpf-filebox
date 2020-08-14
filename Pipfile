@@ -7,13 +7,14 @@ verify_ssl = true
 jedi = "*"
 pylint = "*"
 pytest = "*"
+pybpf = {editable = true, path = "/home/housedhorse/documents/projects/pybpf"}
 
 [packages]
 python-daemon = "*"
 colorama = "*"
 wrapt = {editable = true, path = "."}
 # TODO: replace this with actual pybpf package when we add it PyPl
-pybpf = {editable = true, path = "/home/housedhorse/documents/projects/pybpf"}
+proc = "*"
 
 [requires]
 python_version = "3.8"
