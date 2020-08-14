@@ -19,9 +19,41 @@
 """
 
 import os
+from typing import Iterator, Tuple, Optional
+
+from proc.core import find_processes, Process
+
+from filebox.structs import InodeKey
 
 def module_path(path: str):
     """
     Get the path to a file within the module.
     """
-    return os.path.realpath(os.path.join(__file__, path))
+    return os.path.join(os.path.realpath(os.path.dirname(__file__)), path)
+
+def running_processes() -> Iterator[Tuple[InodeKey, str, int]]:
+    """
+    Returns an interator of all processes running on the
+    system. Iterator contains tuples of [@executable_key, @exe, @tid]
+    """
+    for p in find_processes():
+        exe = p.exe
+        tid = p.pid
+        if not exe:
+            continue
+        try:
+            key = InodeKey.from_pathname(exe)
+        except Exception:
+            continue
+        yield (key, exe, tid)
+
+def running_process(pid: int) -> Optional[Tuple[InodeKey, str]]:
+    p = Process.from_pid(pid)
+    if not p:
+        return None
+    exe = p.exe
+    tid = p.pid
+    if not exe:
+        return None
+    key = InodeKey.from_pathname(exe)
+    return key, exe

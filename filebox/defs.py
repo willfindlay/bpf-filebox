@@ -17,31 +17,7 @@
 
     2020-Aug-13  William Findlay  Created this.
 """
-import sys
-import time
 
-from filebox import defs
-from filebox.bpf_program import BPFProgram
-from filebox.daemon_mixin import DaemonMixin
-from filebox.logger import get_logger, init_logger
+TICKSLEEP = 0.1
 
-logger = get_logger()
-
-class Fileboxd(DaemonMixin):
-    def __init__(self):
-        self.bpf_program = BPFProgram()
-
-    def loop_forever(self):
-        logger.info('Loading BPF program...')
-        self.bpf_program.load_bpf()
-
-        logger.info('Started monitoring the system')
-        while 1:
-            self.bpf_program.on_tick()
-            time.sleep(defs.TICKSLEEP)
-
-def main(sys_args=sys.argv[1:]):
-    init_logger()
-
-    daemon = Fileboxd()
-    daemon.loop_forever()
+PIDFILE = '/run/fileboxd.pid'
