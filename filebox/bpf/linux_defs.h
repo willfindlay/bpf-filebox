@@ -48,6 +48,7 @@ static inline u32 new_encode_dev(dev_t dev)
     return (minor & 0xff) | (major << 8) | ((minor & ~0xff) << 12);
 }
 
-#define EPERM 1
+#define EPERM  1
+#define ENOENT 2
 
 #endif /* ifndef FILEBOX_LINUX_DEFS_H */

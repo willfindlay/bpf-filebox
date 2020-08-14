@@ -35,6 +35,9 @@ BPF_HASH(inode_policy, filebox_policy_key_t, filebox_policy_t,
 BPF_HASH(inode_enforcing, filebox_inode_key_t, bool, FILEBOX_POLICY_MAP_SIZE,
          0);
 
+// TODO: convert this to bss when I add support for it in pybpf
+BPF_ARRAY(filebox_pid_map, u32, 1, 0);
+
 BPF_RINGBUF(audit_inode_events, 4);
 
 static __always_inline void audit_inode(u32 pid, u32 access, u32 decision,
@@ -206,6 +209,14 @@ static __always_inline int do_inode_permission_common(struct inode *inode,
         return 0;
     }
 
+    // Allow filebox to access all files
+    int zero = 0;
+    u32 *filebox_pid = bpf_map_lookup_elem(&filebox_pid_map, &zero);
+    if (filebox_pid) {
+        if (pid == *filebox_pid)
+            return 0;
+    }
+
     filebox_policy_key_t policy_key = {};
     policy_key.inode_key = inode_to_key(inode);
 
@@ -276,6 +287,42 @@ int BPF_PROG(do_inode_rename, struct inode *old_dir, struct dentry *old_dentry,
     if (ret)
         return ret;
     return do_inode_permission_common(new_dentry->d_inode, FILEBOX_FILE_UNLINK);
+}
+
+SEC("lsm/inode_getattr")
+int BPF_PROG(do_inode_getattr, const struct path *path)
+{
+    return do_inode_permission_common(path->dentry->d_inode, FILEBOX_FILE_READ);
+}
+
+SEC("lsm/inode_setattr")
+int BPF_PROG(do_inode_setattr, struct dentry *dentry)
+{
+    return do_inode_permission_common(dentry->d_inode, FILEBOX_FILE_WRITE);
+}
+
+SEC("lsm/inode_getxattr")
+int BPF_PROG(do_inode_getxattr, struct dentry *dentry)
+{
+    return do_inode_permission_common(dentry->d_inode, FILEBOX_FILE_READ);
+}
+
+SEC("lsm/inode_listxattr")
+int BPF_PROG(do_inode_listxattr, struct dentry *dentry)
+{
+    return do_inode_permission_common(dentry->d_inode, FILEBOX_FILE_READ);
+}
+
+SEC("lsm/inode_setxattr")
+int BPF_PROG(do_inode_setxattr, struct dentry *dentry)
+{
+    return do_inode_permission_common(dentry->d_inode, FILEBOX_FILE_WRITE);
+}
+
+SEC("lsm/inode_removexattr")
+int BPF_PROG(do_inode_removexattr, struct dentry *dentry)
+{
+    return do_inode_permission_common(dentry->d_inode, FILEBOX_FILE_WRITE);
 }
 
 SEC("lsm/file_permission")
