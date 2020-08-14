@@ -34,27 +34,43 @@ class BPFProgram:
         self.bpf = None
         self.executables = {}
 
-    def load_bpf(self) -> None:
+    def load_bpf(self, recompile=False) -> None:
         """
         Load the BPF program.
         """
         assert self.bpf is None
 
         builder = BPFObjectBuilder()
-        builder.generate_skeleton(module_path('bpf/filebox.bpf.c'))
-        # TODO: add production mode that just loads the shared object
+
+        # Recompile if desired
+        if recompile:
+            logger.info('Compiling BPF program...')
+            builder.generate_skeleton(module_path('bpf/filebox.bpf.c'))
+        else:
+            # Otherwise try to use existing skeleton and fall back to
+            # recompilation
+            try:
+                builder.use_existing_skeleton(module_path('bpf/.output/filebox.skel.so'))
+            except Exception as e:
+                logger.warn(f'Unable to load pre-existing skeleton due to: {e}')
+                logger.info(f'Falling back to compilation...')
+                builder.generate_skeleton(module_path('bpf/filebox.bpf.c'))
+
+        logger.info('Loading BPF program...')
         self.bpf = builder.build()
 
         self._register_map_types()
         self._register_ringbufs()
 
+        self._store_pid()
+
         self._bootstrap_processes()
 
         # TODO testing
         # Add your policy here, following the examples below
-        #self.add_policy('/bin/cat', '/tmp/foo', FileAccess.READ, PolicyDecision.DENY)
-        #self.add_policy('/bin/nvim', '/tmp/foo', FileAccess.READ|FileAccess.WRITE, PolicyDecision.ALLOW)
-        #self.add_policy('/usr/bin/mv', '/tmp/secret', FileAccess.WRITE|FileAccess.EXEC|FileAccess.READ, PolicyDecision.ALLOW)
+        self.add_policy('/bin/cat', '/tmp/foo', FileAccess.READ, PolicyDecision.DENY)
+        self.add_policy('/bin/nvim', '/tmp/foo', FileAccess.READ|FileAccess.WRITE, PolicyDecision.ALLOW)
+        self.add_policy('/usr/bin/mv', '/tmp/secret', FileAccess.WRITE|FileAccess.EXEC|FileAccess.READ, PolicyDecision.ALLOW)
 
     def on_tick(self) -> None:
         """
@@ -106,6 +122,8 @@ class BPFProgram:
         self.bpf.map('inode_enforcing').register_key_type(InodeKey)
         self.bpf.map('inode_enforcing').register_value_type(ct.c_bool)
 
+        self.bpf.map('filebox_pid_map').register_value_type(ct.c_uint32)
+
     def _register_ringbufs(self):
         """
         Register ringbuf callbacks for the BPF program.
@@ -145,3 +163,9 @@ class BPFProgram:
             state = TaskState()
             state.executable_key = key
             self.bpf.map('task_states')[tid] = state
+
+    def _store_pid(self):
+        """
+        Store filebox's pid in a BPF map.
+        """
+        self.bpf.map('filebox_pid_map')[0] = os.getpid()

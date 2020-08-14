@@ -19,6 +19,7 @@
 """
 
 from __future__ import annotations
+from argparse import Namespace
 import logging, logging.handlers
 import datetime as dt
 import re
@@ -103,10 +104,12 @@ class FileboxLoggerClass(logging.getLoggerClass()):
 
 logging.setLoggerClass(FileboxLoggerClass)
 
-def init_logger(level=logging.INFO):
+def init_logger(args: Namespace):
     """
     Initialize the filebox logger.
     """
+    level = logging.DEBUG if args.debug else logging.INFO
+
     logger = logging.getLogger(LOGGER_NAME)
 
     logger.setLevel(level)

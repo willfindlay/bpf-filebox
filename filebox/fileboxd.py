@@ -19,6 +19,7 @@
 """
 import sys
 import time
+import argparse
 
 from filebox import defs
 from filebox.bpf_program import BPFProgram
@@ -31,17 +32,23 @@ class Fileboxd(DaemonMixin):
     def __init__(self):
         self.bpf_program = BPFProgram()
 
-    def loop_forever(self):
-        logger.info('Loading BPF program...')
-        self.bpf_program.load_bpf()
+    def loop_forever(self, recompile=False):
+        self.bpf_program.load_bpf(recompile=recompile)
 
-        logger.info('Started monitoring the system')
+        logger.info('Started monitoring the system!')
         while 1:
             self.bpf_program.on_tick()
             time.sleep(defs.TICKSLEEP)
 
 def main(sys_args=sys.argv[1:]):
-    init_logger()
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--recompile', action='store_true', help='Force BPF program to be recompiled')
+    parser.add_argument('--debug', action='store_true', help=argparse.SUPPRESS)
+
+    args = parser.parse_args(sys_args)
+
+    init_logger(args)
 
     daemon = Fileboxd()
-    daemon.loop_forever()
+    daemon.loop_forever(recompile=args.recompile)
